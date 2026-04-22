@@ -4,7 +4,7 @@ import { attachSdkShutdown } from '../lifecycle.js';
 import { listPanes, pickPaneForSession } from '../tmux.js';
 import type { SessionState } from '../types.js';
 
-async function attachPanes(iii: ISdk, scope: string): Promise<number> {
+export async function attachPanes(iii: ISdk, scope: string): Promise<number> {
   const panes = await listPanes();
   if (panes.length === 0) return 0;
 

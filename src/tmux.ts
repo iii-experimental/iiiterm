@@ -14,9 +14,13 @@ export interface TmuxPaneInfo {
   currentPath: string;
 }
 
+function tmuxBin(): string {
+  return process.env.IIITERM_TMUX_BIN ?? 'tmux';
+}
+
 export async function tmux(args: string[]): Promise<TmuxResult> {
   return new Promise((resolvePromise) => {
-    const child = spawn('tmux', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(tmuxBin(), args, { stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (d) => {
