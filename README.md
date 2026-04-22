@@ -2,88 +2,209 @@
 
 Operator surface for agent swarms on [iii](https://github.com/iii-hq/iii).
 
-Watches your running coding agents (Claude Code today, Codex / OpenCode / Amp next), pushes session state to the iii engine, and renders a live operator pane into tmux or a browser peer. Everything is a narrow iii worker — compose what you need, skip what you don't.
+iiiterm is a family of narrow iii workers. One for each agent CLI you already use. One each for observation, coordination, and control. Compose what you need, skip what you don't. The engine is the coordination layer; iiiterm is the seats you watch from and the knobs you turn.
 
-## Status
-
-Pre-alpha. v0.1.0 ships one watcher (`bridge-claude-code`) and a terminal pane (`tui`). Both are iii workers. Both use `iii-sdk` primitives and nothing else.
-
-## Why
-
-Multi-agent dev looks like this today:
+## What you get
 
 ```
-ghostty / wezterm / iterm
-└── tmux
-    ├── claude code (session 1)
-    ├── claude code (session 2)
-    ├── codex (session 3)
-    ├── opencode (session 4)
-    └── ???
+┌─ terminal ─────────────────────────────────────────────┐
+│ ┌ tmux ─────────────────────────────────────────────┐  │
+│ │ pane 1: claude code (your session)                │  │
+│ │ pane 2: codex (your session)                      │  │
+│ │ pane 3: opencode (your session)                   │  │
+│ │ pane 4: [iiiterm sidebar]   status of all panes   │  │
+│ └───────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────┘
+          │             │             │
+          ▼             ▼             ▼
+          └──────── iii engine  ────────┘
+             state · triggers · traces
 ```
 
-Visibility is stdout. Coordination is you, switching panes. Sidebar plugins help with the first half. Nothing wires the agents to each other.
+- Every running agent is visible in the sidebar, updated the moment a transcript changes.
+- The same data drives a browser peer on any device you point at the engine.
+- Agents can fire triggers at each other through the router (Claude finishes → Codex reviews).
+- The operator can kill, reattach, or resend a prompt into any pane from the sidebar.
+- Agents can also be *called* as iii workers — `iii.trigger('agent::claude::run', { prompt })` from any worker.
 
-iiiterm takes the same operator surface and puts it on top of iii. The same state store that drives the pane can drive cross-agent triggers, retries, traces, and policy. One layer, not two.
+## Workers
 
-## Architecture
+Every capability is a narrow iii worker you run on its own:
 
-Three narrow workers, each its own iii function registry:
-
-| worker | role |
+| worker | what it does |
 | --- | --- |
-| `bridge-claude-code` | reads `~/.claude/projects/*.jsonl`, parses transcripts, writes `state::set` per session |
-| `bridge-*` (roadmap) | same pattern for Codex, OpenCode, Amp |
-| `tui` | renders sessions from state to a terminal pane, redraws on `state` trigger |
+| `bridge-claude-code` | reads `~/.claude/projects/*.jsonl`, writes SessionState to engine |
+| `bridge-codex` | reads `~/.codex/sessions/rollout-*.json`, writes SessionState |
+| `bridge-opencode` | polls opencode SQLite, writes SessionState |
+| `bridge-router` | evaluates rules against state changes, fires cross-agent triggers |
+| `actions` | registers `iiiterm::session::kill / reattach / resend` |
+| `tui` | renders the operator pane in a terminal, handles keybindings |
+| `claude-worker` | `agent::claude::run` — spawns Claude Code headlessly, returns text |
+| `codex-worker` | `agent::codex::run` — spawns Codex non-interactively |
+| `opencode-worker` | `agent::opencode::run` — spawns OpenCode non-interactively |
+| `amp-worker` | `agent::amp::run` — spawns Amp non-interactively |
+| web peer (`@iiiterm/web`) | Vite + React dashboard using `iii-browser-sdk` on port 49135 |
+| tmux plugin | TPM-installable sidebar toggle, `prefix + o` |
 
-All state lives in the iii engine under scope `iiiterm:sessions`. Any other worker (browser peer, dashboard, cross-agent router) can subscribe.
+All workers share one state scope — `iiiterm:sessions` by default. The scope is the contract. Any future worker reads and writes the same shape.
 
 ## Install
+
+Prerequisites: Node 20+, a running iii engine on `ws://127.0.0.1:49134` (and `ws://127.0.0.1:49135` for the browser peer).
 
 ```sh
 npm i -g iiiterm
 ```
 
-Requires a running iii engine on `ws://127.0.0.1:49134`. Install the engine: `curl -fsSL install.iii.dev/iii/main/install.sh | sh`.
-
-## Run
+Optional:
 
 ```sh
-iiiterm bridge:claude-code &   # start the watcher worker
-iiiterm up                     # render the operator pane
+npm i better-sqlite3   # enables bridge-opencode
 ```
 
-Open a tmux pane for `iiiterm up` and another for `iiiterm bridge:claude-code`. Both connect to the same engine. Stop either one and the other keeps working.
+## Quick start
+
+Open a terminal and run what you need. Each worker is its own process; start only the pieces you want.
+
+```sh
+# observability
+iiiterm bridge:claude-code &
+iiiterm bridge:codex &
+iiiterm bridge:opencode &
+
+# coordination
+iiiterm router &
+iiiterm actions &
+
+# operator surface
+iiiterm up            # the terminal pane, usually run in a tmux split
+
+# agent wrappers (only if you want to call agents via iii.trigger)
+iiiterm claude-worker &
+iiiterm codex-worker &
+iiiterm opencode-worker &
+iiiterm amp-worker &
+```
+
+## Browser peer
+
+```sh
+cd web
+npm install
+npm run dev
+```
+
+Opens a dashboard that connects to the engine on `ws://127.0.0.1:49135` and reads the same state scope as the terminal pane.
+
+## tmux plugin
+
+Add to `~/.tmux.conf`:
+
+```tmux
+set -g @plugin 'iii-experimental/iiiterm'
+```
+
+Reload tmux, install plugins, then press `prefix + o` to toggle the iiiterm sidebar. See `integrations/tmux/README.md` for env overrides.
+
+## Router example
+
+`~/.config/iiiterm/router.json`:
+
+```json
+{
+  "rules": [
+    {
+      "id": "claude-done-wakes-codex",
+      "when": { "agent": "claude-code", "status": "done" },
+      "then": {
+        "function_id": "agent::codex::run",
+        "payload": { "prompt": "Review the latest diff. Report issues only." }
+      },
+      "once": true
+    }
+  ]
+}
+```
+
+Start `iiiterm router` and the moment any Claude Code session transitions to `done`, the router fires `agent::codex::run`. Because `agent::codex::run` is just another iii function, the coordination is observable in the engine trace.
+
+A full example lives at `examples/router.example.json`.
+
+## Config
+
+All config is via env vars. Defaults shown.
+
+```
+IIITERM_ENGINE_URL      ws://127.0.0.1:49134
+IIITERM_STATE_SCOPE     iiiterm:sessions
+IIITERM_POLL_MS         1000
+CLAUDE_PROJECTS_DIR     ~/.claude/projects
+CODEX_SESSIONS_DIR      ~/.codex/sessions
+OPENCODE_DB_PATH        ~/.local/share/opencode/opencode.db
+AMP_THREADS_DIR         ~/.local/share/amp/threads
+IIITERM_ROUTER_RULES    ~/.config/iiiterm/router.json
+IIITERM_OPENCODE_QUERY  override SQL for bridge-opencode
+IIITERM_CLAUDE_BIN      claude
+IIITERM_CODEX_BIN       codex
+IIITERM_OPENCODE_BIN    opencode
+IIITERM_AMP_BIN         amp
+```
 
 ## Layout
 
 ```
-src/
-  types.ts                      SessionState, AgentKind, status enum
-  config.ts                     env loading, path expansion
-  state.ts                      state::set / state::list / state::get helpers
-  render.ts                     ANSI pane renderer
-  watchers/
-    claude-code.ts              JSONL transcript parser
-  workers/
-    bridge-claude-code.ts       cron trigger → scanClaudeProjects → writeSession
-    tui.ts                      state trigger + interval → renderPane
-  cli.ts                        subcommand entry
+iiiterm/
+├── src/
+│   ├── types.ts                      SessionState + enums
+│   ├── config.ts                     env loader
+│   ├── state.ts                      state::set / list / get helpers
+│   ├── render.ts                     ANSI pane renderer
+│   ├── router.ts                     rule loader + matcher
+│   ├── tmux.ts                       tmux wrapper (kill / focus / send-keys)
+│   ├── watchers/
+│   │   ├── claude-code.ts
+│   │   ├── codex.ts
+│   │   └── opencode.ts
+│   ├── agents/
+│   │   └── run.ts                    spawn helper for agent-* workers
+│   ├── workers/
+│   │   ├── bridge-claude-code.ts
+│   │   ├── bridge-codex.ts
+│   │   ├── bridge-opencode.ts
+│   │   ├── bridge-router.ts
+│   │   ├── actions.ts
+│   │   ├── tui.ts
+│   │   ├── claude-worker.ts
+│   │   ├── codex-worker.ts
+│   │   ├── opencode-worker.ts
+│   │   └── amp-worker.ts
+│   └── cli.ts                        subcommand entry
+├── web/                              Vite + React browser peer
+├── integrations/tmux/                TPM plugin scripts
+├── iiiterm.tmux                      TPM entry point
+└── examples/router.example.json
 ```
 
 ## Roadmap
 
 - [x] v0.1.0 — `bridge-claude-code` + `tui`
-- [ ] v0.2.0 — `bridge-codex`, `bridge-opencode` (narrow worker each)
-- [ ] v0.3.0 — browser peer via `iii-browser-sdk` on port 49135, subscribes to same state scope
-- [ ] v0.4.0 — `bridge-router` worker: cross-agent triggers (one agent's `done` event wakes another)
-- [ ] v0.5.0 — session actions from the pane (kill, reattach, resend)
-- [ ] v0.6.0 — tmux pane integration (native splits, `prefix → o`)
-- [ ] graduate individual bridges to `iii-hq/workers` once stable
+- [x] v0.2.0 — `bridge-codex`, `bridge-opencode`
+- [x] v0.3.0 — browser peer via `iii-browser-sdk`
+- [x] v0.4.0 — `bridge-router` for cross-agent triggers
+- [x] v0.5.0 — session actions (`kill`, `reattach`, `resend`) + TUI keybindings
+- [x] v0.6.0 — tmux plugin (`prefix + o` sidebar toggle)
+- [x] v0.7.0 — `claude-worker` / `codex-worker` / `opencode-worker` / `amp-worker` as iii functions
+- [ ] v0.8.0 — stable tmux pane attachment per session so actions hit the right target consistently
+- [ ] v0.9.0 — graduate stable bridges to `iii-hq/workers` as independent packages
+- [ ] v1.0.0 — stream partial agent output through iii channels instead of waiting for process exit
 
-## Contributing
+## Design
 
-This lives in `iii-experimental` while the worker decomposition is in flux. Once `bridge-claude-code` holds up in real use it graduates to `iii-hq/workers` as its own registry entry.
+- Everything is a narrow iii worker. One scope per worker. No cross-scope reads.
+- State is the contract. New bridges and new peers only need to write or read `iiiterm:sessions`.
+- Workers talk only through `iii.trigger()` and state, never by importing each other.
+- Config is env-only. No daemon config file, no TOML, no YAML.
+- The browser peer is a worker too, on port 49135 through `iii-browser-sdk`.
 
 ## License
 

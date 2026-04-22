@@ -30,6 +30,18 @@ switch (cmd) {
   case 'actions':
     run('workers/actions.js');
     break;
+  case 'claude-worker':
+    run('workers/claude-worker.js');
+    break;
+  case 'codex-worker':
+    run('workers/codex-worker.js');
+    break;
+  case 'opencode-worker':
+    run('workers/opencode-worker.js');
+    break;
+  case 'amp-worker':
+    run('workers/amp-worker.js');
+    break;
   case 'tui':
   case 'up':
     run('workers/tui.js');
@@ -44,8 +56,12 @@ usage:
   iiiterm bridge:claude-code    Claude Code transcript watcher
   iiiterm bridge:codex          Codex rollout watcher
   iiiterm bridge:opencode       OpenCode SQLite watcher
-  iiiterm router                cross-agent trigger router (v0.4.0)
-  iiiterm actions               session action worker (v0.5.0)
+  iiiterm router                cross-agent trigger router
+  iiiterm actions               session action worker
+  iiiterm claude-worker         agent::claude::run wrapper
+  iiiterm codex-worker          agent::codex::run wrapper
+  iiiterm opencode-worker       agent::opencode::run wrapper
+  iiiterm amp-worker            agent::amp::run wrapper
 
 env:
   IIITERM_ENGINE_URL      default ws://127.0.0.1:49134
