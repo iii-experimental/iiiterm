@@ -1,13 +1,22 @@
 {
   "name": "iiiterm",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Operator surface for agent swarms on iii. Watches Claude Code / Codex / OpenCode / Amp transcripts, pushes state to iii engine, renders to tmux pane and browser peer.",
   "type": "module",
+  "main": "dist/cli.js",
   "bin": {
     "iiiterm": "./dist/cli.js"
   },
+  "files": [
+    "dist",
+    "iiiterm.tmux",
+    "integrations",
+    "examples",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && chmod +x dist/cli.js",
     "dev": "tsx src/cli.ts",
     "dev:bridge": "tsx src/workers/bridge-claude-code.ts",
     "dev:codex": "tsx src/workers/bridge-codex.ts",
@@ -23,7 +32,8 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "start": "node dist/cli.js"
+    "start": "node dist/cli.js",
+    "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
     "iii",
