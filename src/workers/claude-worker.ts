@@ -2,8 +2,11 @@ import { registerWorker } from 'iii-sdk';
 import { loadConfig } from '../config.js';
 import { attachSdkShutdown } from '../lifecycle.js';
 import { runAgent, type AgentRunInput } from '../agents/run.js';
+import { makeStream, type OptionalStreamInput } from '../agents/stream.js';
 
 const BIN = process.env.IIITERM_CLAUDE_BIN ?? 'claude';
+
+type Input = AgentRunInput & OptionalStreamInput;
 
 async function main(): Promise<void> {
   const cfg = loadConfig();
@@ -14,17 +17,23 @@ async function main(): Promise<void> {
 
   await iii.registerFunction(
     'agent::claude::run',
-    async (input: AgentRunInput) =>
-      runAgent(
-        {
-          bin: BIN,
-          args: (i) => ['-p', '--output-format', 'text', '--', i.prompt],
-        },
-        input,
-      ),
+    async (input: Input) => {
+      const { onChunk, close } = makeStream(input);
+      try {
+        return await runAgent(
+          {
+            bin: BIN,
+            args: (i) => ['-p', '--output-format', 'text', '--', i.prompt],
+          },
+          { ...input, onChunk },
+        );
+      } finally {
+        close();
+      }
+    },
     {
       description:
-        'Run Claude Code headlessly for a single prompt and return the result. CLI must be on PATH as `claude` or set IIITERM_CLAUDE_BIN.',
+        'Run Claude Code headlessly. Pass { stream: { writerRef, engineWsBase } } to receive partial output.',
     },
   );
 

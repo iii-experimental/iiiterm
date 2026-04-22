@@ -1,11 +1,14 @@
 import { spawn } from 'node:child_process';
 
+export type AgentChunkSource = 'stdout' | 'stderr';
+
 export interface AgentRunInput {
   prompt: string;
   cwd?: string;
   timeoutMs?: number;
   env?: Record<string, string>;
   stdin?: string;
+  onChunk?: (chunk: string, source: AgentChunkSource) => void;
 }
 
 export interface AgentRunResult {
@@ -48,10 +51,14 @@ export async function runAgent(
     let stderr = '';
 
     child.stdout?.on('data', (d) => {
-      stdout += d.toString();
+      const text = d.toString();
+      stdout += text;
+      input.onChunk?.(text, 'stdout');
     });
     child.stderr?.on('data', (d) => {
-      stderr += d.toString();
+      const text = d.toString();
+      stderr += text;
+      input.onChunk?.(text, 'stderr');
     });
 
     let timeoutHandle: NodeJS.Timeout | null = null;
