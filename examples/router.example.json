@@ -1,0 +1,27 @@
+{
+  "$schema": "https://github.com/iii-experimental/iiiterm/blob/main/docs/router-schema.json",
+  "rules": [
+    {
+      "id": "claude-done-wakes-codex",
+      "description": "When a Claude Code session finishes, ask codex to review the diff.",
+      "when": { "agent": "claude-code", "status": "done" },
+      "then": {
+        "function_id": "agent::codex::run",
+        "payload": {
+          "prompt": "Review the latest diff in this cwd. Report issues and risks only."
+        }
+      },
+      "once": true
+    },
+    {
+      "id": "codex-error-alert",
+      "description": "Fire a notify function on any codex error.",
+      "when": { "agent": "codex", "status": "error" },
+      "then": {
+        "function_id": "notify::operator",
+        "payload": { "channel": "iiiterm", "severity": "error" },
+        "action": "void"
+      }
+    }
+  ]
+}
