@@ -22,7 +22,7 @@ ghostty / wezterm / iterm
     └── ???
 ```
 
-Visibility is stdout. Coordination is you, switching panes. Existing tmux-sidecar tools (atmux, opensessions, various wmux forks) solve the visibility half with a sidebar. None wire the agents to each other.
+Visibility is stdout. Coordination is you, switching panes. Sidebar plugins help with the first half. Nothing wires the agents to each other.
 
 iiiterm takes the same operator surface and puts it on top of iii. The same state store that drives the pane can drive cross-agent triggers, retries, traces, and policy. One layer, not two.
 

@@ -22,6 +22,8 @@ export interface SessionState {
   ports?: number[];
   updatedAt: number;
   unseen?: boolean;
+  tmuxTarget?: string;
+  pid?: number;
 }
 
 export interface BridgeConfig {
