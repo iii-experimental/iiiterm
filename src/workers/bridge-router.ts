@@ -1,7 +1,7 @@
-import { homedir } from 'node:os';
-import { resolve } from 'node:path';
 import { registerWorker, TriggerAction, type ISdk } from 'iii-sdk';
 import { loadConfig } from '../config.js';
+import { attachSdkShutdown } from '../lifecycle.js';
+import { expand } from '../paths.js';
 import type { SessionState } from '../types.js';
 import {
   fireKey,
@@ -12,11 +12,21 @@ import {
   type RouterRule,
 } from '../router.js';
 
-const fired = new Set<string>();
+const FIRED_SCOPE = 'iiiterm:router:fired';
 
-function expand(p: string): string {
-  if (p.startsWith('~')) return resolve(homedir(), p.slice(1).replace(/^\//, ''));
-  return resolve(p);
+async function loadFiredSet(iii: ISdk): Promise<Set<string>> {
+  const res = (await iii.trigger({
+    function_id: 'state::list',
+    payload: { scope: FIRED_SCOPE },
+  })) as { items?: Array<{ key: string }> };
+  return new Set((res.items ?? []).map((i) => i.key));
+}
+
+async function markFired(iii: ISdk, key: string): Promise<void> {
+  await iii.trigger({
+    function_id: 'state::set',
+    payload: { scope: FIRED_SCOPE, key, value: Date.now() },
+  });
 }
 
 function actionToTriggerAction(a: RouterAction) {
@@ -42,13 +52,20 @@ async function applyRule(
       });
       count += 1;
     } catch (err) {
-      console.error(`[iiiterm/router] ${ruleKey} → ${t.function_id} failed:`, err);
+      process.stderr.write(
+        `[iiiterm/router] ${ruleKey} -> ${t.function_id} failed: ${String(err)}\n`,
+      );
     }
   }
   return count;
 }
 
-async function evaluate(iii: ISdk, scope: string, rulesPath: string): Promise<number> {
+async function evaluate(
+  iii: ISdk,
+  fired: Set<string>,
+  scope: string,
+  rulesPath: string,
+): Promise<number> {
   const { rules } = await loadRules(rulesPath);
   if (rules.length === 0) return 0;
 
@@ -66,6 +83,7 @@ async function evaluate(iii: ISdk, scope: string, rulesPath: string): Promise<nu
       const k = fireKey(ruleKey, s.id, s.status);
       if (rule.once !== false && fired.has(k)) continue;
       fired.add(k);
+      await markFired(iii, k);
       fires += await applyRule(iii, rule, ruleKey, s);
     }
   }
@@ -81,11 +99,14 @@ async function main(): Promise<void> {
   const iii = await registerWorker(cfg.engineUrl, {
     workerName: 'iiiterm-bridge-router',
   });
+  attachSdkShutdown(iii);
+
+  const fired = await loadFiredSet(iii);
 
   await iii.registerFunction(
     'iiiterm::router::evaluate',
     async () => {
-      const fires = await evaluate(iii, cfg.stateScope, rulesPath);
+      const fires = await evaluate(iii, fired, cfg.stateScope, rulesPath);
       return { fires };
     },
     { description: 'Evaluate router rules against current sessions and fire matching triggers' },
@@ -98,12 +119,12 @@ async function main(): Promise<void> {
     metadata: {},
   });
 
-  console.log(
-    `[iiiterm] bridge-router up · rules ${rulesPath} · scope ${cfg.stateScope}`,
+  process.stdout.write(
+    `[iiiterm] bridge-router up · rules ${rulesPath} · scope ${cfg.stateScope} · fired-keys ${fired.size} restored\n`,
   );
 }
 
 main().catch((err) => {
-  console.error('[iiiterm] bridge-router failed:', err);
+  process.stderr.write(`[iiiterm] bridge-router failed: ${String(err)}\n`);
   process.exit(1);
 });

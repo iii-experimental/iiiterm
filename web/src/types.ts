@@ -1,3 +1,6 @@
+// Mirror of ../../../src/types.ts — kept in sync manually until a shared
+// package extraction. Fields here MUST match the Node-side SessionState.
+
 export type AgentKind = 'claude-code' | 'codex' | 'opencode' | 'amp';
 
 export type SessionStatus =
@@ -23,4 +26,5 @@ export interface SessionState {
   updatedAt: number;
   unseen?: boolean;
   tmuxTarget?: string;
+  pid?: number;
 }

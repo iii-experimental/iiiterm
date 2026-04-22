@@ -13,11 +13,6 @@ interface ClaudeTranscriptLine {
   isError?: boolean;
 }
 
-export interface ReadResult {
-  session: SessionState;
-  bytes: number;
-}
-
 const fileOffsets = new Map<string, number>();
 
 function extractText(line: ClaudeTranscriptLine): string | undefined {
@@ -52,7 +47,9 @@ async function parseTranscript(
   for (const line of lines) {
     try {
       parsed.push(JSON.parse(line));
-    } catch {}
+    } catch {
+      /* skip malformed line */
+    }
   }
   if (parsed.length === 0) return null;
 
@@ -89,6 +86,7 @@ export async function scanClaudeProjects(
   rootDir: string,
 ): Promise<SessionState[]> {
   const out: SessionState[] = [];
+  const seen = new Set<string>();
   let projects: string[];
   try {
     projects = await readdir(rootDir);
@@ -108,6 +106,7 @@ export async function scanClaudeProjects(
     for (const file of files) {
       if (!file.endsWith('.jsonl')) continue;
       const full = join(projDir, file);
+      seen.add(full);
 
       let mtimeMs: number;
       let size: number;
@@ -128,6 +127,10 @@ export async function scanClaudeProjects(
       session.updatedAt = mtimeMs;
       out.push(session);
     }
+  }
+
+  for (const key of fileOffsets.keys()) {
+    if (!seen.has(key)) fileOffsets.delete(key);
   }
 
   return out;

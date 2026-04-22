@@ -1,5 +1,6 @@
 import { registerWorker } from 'iii-sdk';
-import { loadConfig } from '../config.js';
+import { cronEveryPoll, loadConfig } from '../config.js';
+import { attachSdkShutdown } from '../lifecycle.js';
 import { writeSession } from '../state.js';
 import { scanOpencodeDb } from '../watchers/opencode.js';
 
@@ -8,6 +9,7 @@ async function main(): Promise<void> {
   const iii = await registerWorker(cfg.engineUrl, {
     workerName: 'iiiterm-bridge-opencode',
   });
+  attachSdkShutdown(iii);
 
   await iii.registerFunction(
     'iiiterm::bridge::opencode::scan',
@@ -25,16 +27,16 @@ async function main(): Promise<void> {
   await iii.registerTrigger({
     type: 'cron',
     function_id: 'iiiterm::bridge::opencode::scan',
-    config: { expression: `*/${Math.max(1, Math.round(cfg.pollMs / 1000))} * * * * *` },
+    config: { expression: cronEveryPoll(cfg.pollMs) },
     metadata: {},
   });
 
-  console.log(
-    `[iiiterm] bridge-opencode up · watching ${cfg.opencodeDbPath} · scope ${cfg.stateScope}`,
+  process.stdout.write(
+    `[iiiterm] bridge-opencode up · watching ${cfg.opencodeDbPath} · scope ${cfg.stateScope}\n`,
   );
 }
 
 main().catch((err) => {
-  console.error('[iiiterm] bridge-opencode failed:', err);
+  process.stderr.write(`[iiiterm] bridge-opencode failed: ${String(err)}\n`);
   process.exit(1);
 });

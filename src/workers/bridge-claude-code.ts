@@ -1,5 +1,6 @@
 import { registerWorker } from 'iii-sdk';
-import { loadConfig } from '../config.js';
+import { cronEveryPoll, loadConfig } from '../config.js';
+import { attachSdkShutdown } from '../lifecycle.js';
 import { writeSession } from '../state.js';
 import { scanClaudeProjects } from '../watchers/claude-code.js';
 
@@ -8,6 +9,7 @@ async function main(): Promise<void> {
   const iii = await registerWorker(cfg.engineUrl, {
     workerName: 'iiiterm-bridge-claude-code',
   });
+  attachSdkShutdown(iii);
 
   await iii.registerFunction(
     'iiiterm::bridge::claude-code::scan',
@@ -24,16 +26,16 @@ async function main(): Promise<void> {
   await iii.registerTrigger({
     type: 'cron',
     function_id: 'iiiterm::bridge::claude-code::scan',
-    config: { expression: `*/${Math.max(1, Math.round(cfg.pollMs / 1000))} * * * * *` },
+    config: { expression: cronEveryPoll(cfg.pollMs) },
     metadata: {},
   });
 
-  console.log(
-    `[iiiterm] bridge-claude-code up · watching ${cfg.claudeProjectsDir} · scope ${cfg.stateScope}`,
+  process.stdout.write(
+    `[iiiterm] bridge-claude-code up · watching ${cfg.claudeProjectsDir} · scope ${cfg.stateScope}\n`,
   );
 }
 
 main().catch((err) => {
-  console.error('[iiiterm] bridge-claude-code failed:', err);
+  process.stderr.write(`[iiiterm] bridge-claude-code failed: ${String(err)}\n`);
   process.exit(1);
 });

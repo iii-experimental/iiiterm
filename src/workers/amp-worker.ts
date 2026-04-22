@@ -1,5 +1,6 @@
 import { registerWorker } from 'iii-sdk';
 import { loadConfig } from '../config.js';
+import { attachSdkShutdown } from '../lifecycle.js';
 import { runAgent, type AgentRunInput } from '../agents/run.js';
 
 const BIN = process.env.IIITERM_AMP_BIN ?? 'amp';
@@ -9,6 +10,7 @@ async function main(): Promise<void> {
   const iii = await registerWorker(cfg.engineUrl, {
     workerName: 'iiiterm-amp-worker',
   });
+  attachSdkShutdown(iii);
 
   await iii.registerFunction(
     'agent::amp::run',
@@ -16,7 +18,7 @@ async function main(): Promise<void> {
       runAgent(
         {
           bin: BIN,
-          args: (i) => [i.prompt],
+          args: () => [],
           usesStdin: true,
         },
         input,
@@ -27,10 +29,10 @@ async function main(): Promise<void> {
     },
   );
 
-  console.log(`[iiiterm] amp-worker up · bin ${BIN}`);
+  process.stdout.write(`[iiiterm] amp-worker up · bin ${BIN}\n`);
 }
 
 main().catch((err) => {
-  console.error('[iiiterm] amp-worker failed:', err);
+  process.stderr.write(`[iiiterm] amp-worker failed: ${String(err)}\n`);
   process.exit(1);
 });

@@ -69,7 +69,7 @@ export function renderPane(sessions: SessionState[], opts: RenderOpts = {}): str
 
   const body = rows || `${DIM}(no sessions yet — bridge workers still scanning)${RESET}`;
 
-  const hints = `${DIM}↑/↓ or j/k select · x kill · r reattach · s resend · q quit${RESET}`;
+  const hints = `${DIM}↑/↓ or j/k select · x kill · r reattach · s resend · q quit (Enter reserved)${RESET}`;
   const footer = opts.footer
     ? `\n${DIM}${'─'.repeat(100)}${RESET}\n${opts.footer}\n${hints}\n`
     : `\n${DIM}${'─'.repeat(100)}${RESET}\n${hints}\n`;

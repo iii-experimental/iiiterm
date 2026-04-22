@@ -1,5 +1,6 @@
 import { registerWorker } from 'iii-sdk';
-import { loadConfig } from '../config.js';
+import { cronEveryPoll, loadConfig } from '../config.js';
+import { attachSdkShutdown } from '../lifecycle.js';
 import { writeSession } from '../state.js';
 import { scanCodexSessions } from '../watchers/codex.js';
 
@@ -8,6 +9,7 @@ async function main(): Promise<void> {
   const iii = await registerWorker(cfg.engineUrl, {
     workerName: 'iiiterm-bridge-codex',
   });
+  attachSdkShutdown(iii);
 
   await iii.registerFunction(
     'iiiterm::bridge::codex::scan',
@@ -24,16 +26,16 @@ async function main(): Promise<void> {
   await iii.registerTrigger({
     type: 'cron',
     function_id: 'iiiterm::bridge::codex::scan',
-    config: { expression: `*/${Math.max(1, Math.round(cfg.pollMs / 1000))} * * * * *` },
+    config: { expression: cronEveryPoll(cfg.pollMs) },
     metadata: {},
   });
 
-  console.log(
-    `[iiiterm] bridge-codex up · watching ${cfg.codexSessionsDir} · scope ${cfg.stateScope}`,
+  process.stdout.write(
+    `[iiiterm] bridge-codex up · watching ${cfg.codexSessionsDir} · scope ${cfg.stateScope}\n`,
   );
 }
 
 main().catch((err) => {
-  console.error('[iiiterm] bridge-codex failed:', err);
+  process.stderr.write(`[iiiterm] bridge-codex failed: ${String(err)}\n`);
   process.exit(1);
 });

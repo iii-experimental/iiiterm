@@ -1,5 +1,6 @@
 import { registerWorker } from 'iii-sdk';
 import { loadConfig } from '../config.js';
+import { attachSdkShutdown } from '../lifecycle.js';
 import { runAgent, type AgentRunInput } from '../agents/run.js';
 
 const BIN = process.env.IIITERM_CODEX_BIN ?? 'codex';
@@ -9,6 +10,7 @@ async function main(): Promise<void> {
   const iii = await registerWorker(cfg.engineUrl, {
     workerName: 'iiiterm-codex-worker',
   });
+  attachSdkShutdown(iii);
 
   await iii.registerFunction(
     'agent::codex::run',
@@ -16,7 +18,7 @@ async function main(): Promise<void> {
       runAgent(
         {
           bin: BIN,
-          args: (i) => ['exec', i.prompt],
+          args: (i) => ['exec', '--', i.prompt],
         },
         input,
       ),
@@ -26,10 +28,10 @@ async function main(): Promise<void> {
     },
   );
 
-  console.log(`[iiiterm] codex-worker up · bin ${BIN}`);
+  process.stdout.write(`[iiiterm] codex-worker up · bin ${BIN}\n`);
 }
 
 main().catch((err) => {
-  console.error('[iiiterm] codex-worker failed:', err);
+  process.stderr.write(`[iiiterm] codex-worker failed: ${String(err)}\n`);
   process.exit(1);
 });

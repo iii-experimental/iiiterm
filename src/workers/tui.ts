@@ -1,5 +1,6 @@
 import { registerWorker } from 'iii-sdk';
 import { loadConfig } from '../config.js';
+import { attachSdkShutdown, onShutdown } from '../lifecycle.js';
 import { listSessions } from '../state.js';
 import { renderPane } from '../render.js';
 import type { SessionState } from '../types.js';
@@ -19,16 +20,19 @@ function parseKey(chunk: Buffer): Keypress {
   if (s === '\x1b[A' || s === 'k') return { kind: 'up' };
   if (s === '\x1b[B' || s === 'j') return { kind: 'down' };
   if (s === 'x') return { kind: 'kill' };
-  if (s === 'r' || s === '\r') return { kind: 'reattach' };
-  if (s === '\n' || s === 's') return { kind: 'resend' };
+  if (s === 'r') return { kind: 'reattach' };
+  if (s === 's') return { kind: 'resend' };
   return { kind: 'other' };
 }
+
+const HEARTBEAT_MS = 10_000;
 
 async function main(): Promise<void> {
   const cfg = loadConfig();
   const iii = await registerWorker(cfg.engineUrl, {
     workerName: 'iiiterm-tui',
   });
+  attachSdkShutdown(iii);
 
   let latest: SessionState[] = [];
   let selected = 0;
@@ -65,7 +69,7 @@ async function main(): Promise<void> {
         function_id: fn,
         payload: { id: s.id, ...extra },
       })) as { ok?: boolean; reason?: string };
-      status = res.ok ? `${fn} → ok` : `${fn} → ${res.reason ?? 'error'}`;
+      status = res.ok ? `${fn} -> ok` : `${fn} -> ${res.reason ?? 'error'}`;
     } catch (err) {
       status = `${fn} threw: ${String(err)}`;
     }
@@ -95,7 +99,6 @@ async function main(): Promise<void> {
       const key = parseKey(chunk);
       switch (key.kind) {
         case 'quit':
-          process.stdout.write('\x1b[?25h');
           process.exit(0);
           return;
         case 'up':
@@ -122,11 +125,25 @@ async function main(): Promise<void> {
   }
 
   process.stdout.write('\x1b[?25l');
+  onShutdown(() => {
+    process.stdout.write('\x1b[?25h');
+    if (process.stdin.isTTY) {
+      try {
+        process.stdin.setRawMode(false);
+      } catch {
+        /* ignore */
+      }
+    }
+  });
+
   await refresh();
-  setInterval(() => void refresh(), cfg.pollMs);
+  const heartbeat = setInterval(() => void refresh(), HEARTBEAT_MS);
+  onShutdown(() => {
+    clearInterval(heartbeat);
+  });
 }
 
 main().catch((err) => {
-  console.error('[iiiterm] tui failed:', err);
+  process.stderr.write(`[iiiterm] tui failed: ${String(err)}\n`);
   process.exit(1);
 });

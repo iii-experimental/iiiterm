@@ -9,48 +9,55 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
-    let timer: ReturnType<typeof setInterval> | null = null;
+    let registered = false;
+    const iii = getClient();
 
-    (async () => {
+    const refresh = async () => {
       try {
-        const iii = getClient();
-
-        const refresh = async () => {
-          const res = (await iii.trigger({
-            function_id: 'state::list',
-            payload: { scope: STATE_SCOPE },
-          })) as { items?: Array<{ key: string; value: SessionState }> };
-          if (cancelled) return;
-          setSessions((res.items ?? []).map((i) => i.value));
-          setStatus('live');
-        };
-
-        iii.registerFunction(
-          'ui::iiiterm::refresh',
-          async () => {
-            await refresh();
-            return { refreshed: true };
-          },
-          { description: 'Browser peer refresh, fired by state trigger' },
-        );
-
-        iii.registerTrigger({
-          type: 'state',
-          function_id: 'ui::iiiterm::refresh',
-          config: { scope: STATE_SCOPE },
-        });
-
-        await refresh();
-        timer = setInterval(refresh, 2000);
+        const res = (await iii.trigger({
+          function_id: 'state::list',
+          payload: { scope: STATE_SCOPE },
+        })) as { items?: Array<{ key: string; value: SessionState }> };
+        if (cancelled) return;
+        setSessions((res.items ?? []).map((i) => i.value));
+        setStatus('live');
       } catch (err) {
-        console.error('[iiiterm/web] connect failed', err);
+        console.error('[iiiterm/web] refresh failed', err);
         if (!cancelled) setStatus('error');
       }
-    })();
+    };
+
+    try {
+      iii.registerFunction(
+        'ui::iiiterm::refresh',
+        async () => {
+          await refresh();
+          return { refreshed: true };
+        },
+        { description: 'Browser peer refresh, fired by state trigger' },
+      );
+      iii.registerTrigger({
+        type: 'state',
+        function_id: 'ui::iiiterm::refresh',
+        config: { scope: STATE_SCOPE },
+      });
+      registered = true;
+    } catch (err) {
+      console.error('[iiiterm/web] register failed', err);
+      if (!cancelled) setStatus('error');
+    }
+
+    void refresh();
 
     return () => {
       cancelled = true;
-      if (timer) clearInterval(timer);
+      if (registered) {
+        try {
+          iii.shutdown?.();
+        } catch {
+          /* ignore */
+        }
+      }
     };
   }, []);
 

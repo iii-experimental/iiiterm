@@ -73,6 +73,7 @@ async function parseRollout(filePath: string): Promise<SessionState | null> {
 
 export async function scanCodexSessions(rootDir: string): Promise<SessionState[]> {
   const out: SessionState[] = [];
+  const seen = new Set<string>();
   let files: string[];
   try {
     files = await readdir(rootDir);
@@ -83,6 +84,7 @@ export async function scanCodexSessions(rootDir: string): Promise<SessionState[]
   for (const file of files) {
     if (!file.endsWith('.json') && !file.endsWith('.jsonl')) continue;
     const full = join(rootDir, file);
+    seen.add(full);
 
     let size: number;
     let mtimeMs: number;
@@ -102,6 +104,10 @@ export async function scanCodexSessions(rootDir: string): Promise<SessionState[]
     if (!session) continue;
     session.updatedAt = mtimeMs;
     out.push(session);
+  }
+
+  for (const key of fileOffsets.keys()) {
+    if (!seen.has(key)) fileOffsets.delete(key);
   }
 
   return out;

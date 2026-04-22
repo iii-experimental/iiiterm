@@ -1,5 +1,6 @@
 import { registerWorker } from 'iii-sdk';
 import { loadConfig } from '../config.js';
+import { attachSdkShutdown } from '../lifecycle.js';
 import { runAgent, type AgentRunInput } from '../agents/run.js';
 
 const BIN = process.env.IIITERM_OPENCODE_BIN ?? 'opencode';
@@ -9,6 +10,7 @@ async function main(): Promise<void> {
   const iii = await registerWorker(cfg.engineUrl, {
     workerName: 'iiiterm-opencode-worker',
   });
+  attachSdkShutdown(iii);
 
   await iii.registerFunction(
     'agent::opencode::run',
@@ -16,7 +18,7 @@ async function main(): Promise<void> {
       runAgent(
         {
           bin: BIN,
-          args: (i) => ['run', i.prompt],
+          args: (i) => ['run', '--', i.prompt],
         },
         input,
       ),
@@ -26,10 +28,10 @@ async function main(): Promise<void> {
     },
   );
 
-  console.log(`[iiiterm] opencode-worker up · bin ${BIN}`);
+  process.stdout.write(`[iiiterm] opencode-worker up · bin ${BIN}\n`);
 }
 
 main().catch((err) => {
-  console.error('[iiiterm] opencode-worker failed:', err);
+  process.stderr.write(`[iiiterm] opencode-worker failed: ${String(err)}\n`);
   process.exit(1);
 });
