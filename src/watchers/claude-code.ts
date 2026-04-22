@@ -1,6 +1,8 @@
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import type { SessionState } from '../types.js';
+import type { ErrorReporter } from '../errors.js';
+import { readWholeOrTail } from './tail.js';
 
 interface ClaudeTranscriptLine {
   type?: string;
@@ -11,6 +13,10 @@ interface ClaudeTranscriptLine {
   usage?: { input_tokens?: number; output_tokens?: number };
   timestamp?: string;
   isError?: boolean;
+}
+
+export interface ScanOptions {
+  onError?: ErrorReporter;
 }
 
 const fileOffsets = new Map<string, number>();
@@ -37,10 +43,22 @@ function inferStatus(last: ClaudeTranscriptLine, ageMs: number): SessionState['s
 
 async function parseTranscript(
   filePath: string,
+  size: number,
   projectSlug: string,
+  onError: ErrorReporter | undefined,
 ): Promise<SessionState | null> {
-  const buf = await readFile(filePath, 'utf8');
-  const lines = buf.split('\n').filter(Boolean);
+  let body: string;
+  let tailed = false;
+  try {
+    const res = await readWholeOrTail(filePath, size);
+    body = res.text;
+    tailed = res.tailed;
+  } catch (err) {
+    onError?.(`read ${filePath}`, err);
+    return null;
+  }
+
+  const lines = body.split('\n').filter(Boolean);
   if (lines.length === 0) return null;
 
   const parsed: ClaudeTranscriptLine[] = [];
@@ -48,7 +66,7 @@ async function parseTranscript(
     try {
       parsed.push(JSON.parse(line));
     } catch {
-      /* skip malformed line */
+      /* skip malformed line -- tail reads can slice mid-JSON */
     }
   }
   if (parsed.length === 0) return null;
@@ -58,8 +76,12 @@ async function parseTranscript(
   const id = firstWithSession?.sessionId ?? basename(filePath, '.jsonl');
 
   const cwd = parsed.find((p) => p.cwd)?.cwd;
-  const tokensIn = parsed.reduce((n, p) => n + (p.usage?.input_tokens ?? 0), 0);
-  const tokensOut = parsed.reduce((n, p) => n + (p.usage?.output_tokens ?? 0), 0);
+  const tokensIn = tailed
+    ? undefined
+    : parsed.reduce((n, p) => n + (p.usage?.input_tokens ?? 0), 0);
+  const tokensOut = tailed
+    ? undefined
+    : parsed.reduce((n, p) => n + (p.usage?.output_tokens ?? 0), 0);
 
   const lastTurnAt = last.timestamp ? new Date(last.timestamp).getTime() : Date.now();
   const ageMs = Date.now() - lastTurnAt;
@@ -84,13 +106,16 @@ async function parseTranscript(
 
 export async function scanClaudeProjects(
   rootDir: string,
+  opts: ScanOptions = {},
 ): Promise<SessionState[]> {
+  const { onError } = opts;
   const out: SessionState[] = [];
   const seen = new Set<string>();
   let projects: string[];
   try {
     projects = await readdir(rootDir);
-  } catch {
+  } catch (err) {
+    onError?.(`readdir ${rootDir}`, err);
     return out;
   }
 
@@ -99,7 +124,8 @@ export async function scanClaudeProjects(
     let files: string[];
     try {
       files = await readdir(projDir);
-    } catch {
+    } catch (err) {
+      onError?.(`readdir ${projDir}`, err);
       continue;
     }
 
@@ -114,7 +140,8 @@ export async function scanClaudeProjects(
         const s = await stat(full);
         mtimeMs = s.mtimeMs;
         size = s.size;
-      } catch {
+      } catch (err) {
+        onError?.(`stat ${full}`, err);
         continue;
       }
 
@@ -122,7 +149,7 @@ export async function scanClaudeProjects(
       if (prev === size) continue;
       fileOffsets.set(full, size);
 
-      const session = await parseTranscript(full, proj);
+      const session = await parseTranscript(full, size, proj, onError);
       if (!session) continue;
       session.updatedAt = mtimeMs;
       out.push(session);

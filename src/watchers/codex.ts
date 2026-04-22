@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import type { SessionState } from '../types.js';
+import type { ErrorReporter } from '../errors.js';
 
 interface CodexItem {
   role?: 'user' | 'assistant' | 'system' | 'tool';
@@ -17,6 +18,10 @@ interface CodexRollout {
   };
   turn_context?: { cwd?: string };
   items?: CodexItem[];
+}
+
+export interface ScanOptions {
+  onError?: ErrorReporter;
 }
 
 const fileOffsets = new Map<string, number>();
@@ -39,12 +44,22 @@ function inferStatus(last: CodexItem | undefined, ageMs: number): SessionState['
   return 'idle';
 }
 
-async function parseRollout(filePath: string): Promise<SessionState | null> {
-  const buf = await readFile(filePath, 'utf8');
+async function parseRollout(
+  filePath: string,
+  onError: ErrorReporter | undefined,
+): Promise<SessionState | null> {
+  let buf: string;
+  try {
+    buf = await readFile(filePath, 'utf8');
+  } catch (err) {
+    onError?.(`read ${filePath}`, err);
+    return null;
+  }
   let parsed: CodexRollout;
   try {
     parsed = JSON.parse(buf);
-  } catch {
+  } catch (err) {
+    onError?.(`parse ${filePath}`, err);
     return null;
   }
 
@@ -71,13 +86,18 @@ async function parseRollout(filePath: string): Promise<SessionState | null> {
   };
 }
 
-export async function scanCodexSessions(rootDir: string): Promise<SessionState[]> {
+export async function scanCodexSessions(
+  rootDir: string,
+  opts: ScanOptions = {},
+): Promise<SessionState[]> {
+  const { onError } = opts;
   const out: SessionState[] = [];
   const seen = new Set<string>();
   let files: string[];
   try {
     files = await readdir(rootDir);
-  } catch {
+  } catch (err) {
+    onError?.(`readdir ${rootDir}`, err);
     return out;
   }
 
@@ -92,7 +112,8 @@ export async function scanCodexSessions(rootDir: string): Promise<SessionState[]
       const s = await stat(full);
       size = s.size;
       mtimeMs = s.mtimeMs;
-    } catch {
+    } catch (err) {
+      onError?.(`stat ${full}`, err);
       continue;
     }
 
@@ -100,7 +121,7 @@ export async function scanCodexSessions(rootDir: string): Promise<SessionState[]
     if (prev === size) continue;
     fileOffsets.set(full, size);
 
-    const session = await parseRollout(full);
+    const session = await parseRollout(full, onError);
     if (!session) continue;
     session.updatedAt = mtimeMs;
     out.push(session);

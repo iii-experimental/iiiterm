@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import type { SessionState } from '../types.js';
+import type { ErrorReporter } from '../errors.js';
 
 interface SqliteRow {
   id: string;
@@ -25,7 +26,7 @@ type BetterSqliteConstructor = new (
 let Database: BetterSqliteConstructor | null = null;
 let attempted = false;
 
-async function loadDriver(): Promise<BetterSqliteConstructor | null> {
+async function loadDriver(onError: ErrorReporter | undefined): Promise<BetterSqliteConstructor | null> {
   if (attempted) return Database;
   attempted = true;
   try {
@@ -33,7 +34,8 @@ async function loadDriver(): Promise<BetterSqliteConstructor | null> {
       | { default: BetterSqliteConstructor }
       | BetterSqliteConstructor;
     Database = 'default' in mod ? mod.default : mod;
-  } catch {
+  } catch (err) {
+    onError?.('better-sqlite3 unavailable', err);
     Database = null;
   }
   return Database;
@@ -58,15 +60,27 @@ function inferStatus(lastRole: string | null | undefined, ageMs: number): Sessio
   return 'idle';
 }
 
+export interface ScanOpencodeOptions {
+  onError?: ErrorReporter;
+}
+
 export async function scanOpencodeDb(
   dbPath: string,
   customQuery?: string,
+  opts: ScanOpencodeOptions = {},
 ): Promise<SessionState[]> {
+  const { onError } = opts;
   if (!existsSync(dbPath)) return [];
-  const Db = await loadDriver();
+  const Db = await loadDriver(onError);
   if (!Db) return [];
 
-  const db = new Db(dbPath, { readonly: true, fileMustExist: true });
+  let db: BetterSqliteDatabase;
+  try {
+    db = new Db(dbPath, { readonly: true, fileMustExist: true });
+  } catch (err) {
+    onError?.(`open ${dbPath}`, err);
+    return [];
+  }
   const out: SessionState[] = [];
   try {
     const rows = db.prepare(customQuery ?? DEFAULT_QUERY).all() as SqliteRow[];
@@ -86,8 +100,8 @@ export async function scanOpencodeDb(
         updatedAt: Date.now(),
       });
     }
-  } catch {
-    // schema mismatch — bail quietly, operator can supply a custom query
+  } catch (err) {
+    onError?.(`query ${dbPath}`, err);
   } finally {
     db.close();
   }

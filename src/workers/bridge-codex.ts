@@ -1,5 +1,6 @@
 import { registerWorker } from 'iii-sdk';
 import { cronEveryPoll, loadConfig } from '../config.js';
+import { sdkReporter } from '../errors.js';
 import { attachSdkShutdown } from '../lifecycle.js';
 import { writeSession } from '../state.js';
 import { scanCodexSessions } from '../watchers/codex.js';
@@ -10,11 +11,12 @@ async function main(): Promise<void> {
     workerName: 'iiiterm-bridge-codex',
   });
   attachSdkShutdown(iii);
+  const onError = sdkReporter(iii, 'iiiterm/bridge-codex');
 
   await iii.registerFunction(
     'iiiterm::bridge::codex::scan',
     async () => {
-      const sessions = await scanCodexSessions(cfg.codexSessionsDir);
+      const sessions = await scanCodexSessions(cfg.codexSessionsDir, { onError });
       for (const s of sessions) {
         await writeSession(iii, cfg.stateScope, s);
       }

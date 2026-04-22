@@ -1,5 +1,6 @@
 import { registerWorker } from 'iii-sdk';
 import { cronEveryPoll, loadConfig } from '../config.js';
+import { sdkReporter } from '../errors.js';
 import { attachSdkShutdown } from '../lifecycle.js';
 import { writeSession } from '../state.js';
 import { scanClaudeProjects } from '../watchers/claude-code.js';
@@ -10,11 +11,12 @@ async function main(): Promise<void> {
     workerName: 'iiiterm-bridge-claude-code',
   });
   attachSdkShutdown(iii);
+  const onError = sdkReporter(iii, 'iiiterm/bridge-claude-code');
 
   await iii.registerFunction(
     'iiiterm::bridge::claude-code::scan',
     async () => {
-      const sessions = await scanClaudeProjects(cfg.claudeProjectsDir);
+      const sessions = await scanClaudeProjects(cfg.claudeProjectsDir, { onError });
       for (const s of sessions) {
         await writeSession(iii, cfg.stateScope, s);
       }

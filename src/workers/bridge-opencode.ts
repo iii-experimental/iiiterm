@@ -1,5 +1,6 @@
 import { registerWorker } from 'iii-sdk';
 import { cronEveryPoll, loadConfig } from '../config.js';
+import { sdkReporter } from '../errors.js';
 import { attachSdkShutdown } from '../lifecycle.js';
 import { writeSession } from '../state.js';
 import { scanOpencodeDb } from '../watchers/opencode.js';
@@ -10,12 +11,13 @@ async function main(): Promise<void> {
     workerName: 'iiiterm-bridge-opencode',
   });
   attachSdkShutdown(iii);
+  const onError = sdkReporter(iii, 'iiiterm/bridge-opencode');
 
   await iii.registerFunction(
     'iiiterm::bridge::opencode::scan',
     async () => {
       const query = process.env.IIITERM_OPENCODE_QUERY;
-      const sessions = await scanOpencodeDb(cfg.opencodeDbPath, query);
+      const sessions = await scanOpencodeDb(cfg.opencodeDbPath, query, { onError });
       for (const s of sessions) {
         await writeSession(iii, cfg.stateScope, s);
       }
