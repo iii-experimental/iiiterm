@@ -10,6 +10,10 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/cli.ts",
     "dev:bridge": "tsx src/workers/bridge-claude-code.ts",
+    "dev:codex": "tsx src/workers/bridge-codex.ts",
+    "dev:opencode": "tsx src/workers/bridge-opencode.ts",
+    "dev:router": "tsx src/workers/bridge-router.ts",
+    "dev:actions": "tsx src/workers/actions.ts",
     "dev:tui": "tsx src/workers/tui.ts",
     "lint": "tsc --noEmit",
     "start": "node dist/cli.js"
@@ -38,7 +42,11 @@
   "dependencies": {
     "iii-sdk": "^0.11.2"
   },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.5.0"
+  },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"

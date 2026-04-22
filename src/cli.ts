@@ -18,6 +18,18 @@ switch (cmd) {
   case 'bridge:claude-code':
     run('workers/bridge-claude-code.js');
     break;
+  case 'bridge:codex':
+    run('workers/bridge-codex.js');
+    break;
+  case 'bridge:opencode':
+    run('workers/bridge-opencode.js');
+    break;
+  case 'router':
+    run('workers/bridge-router.js');
+    break;
+  case 'actions':
+    run('workers/actions.js');
+    break;
   case 'tui':
   case 'up':
     run('workers/tui.js');
@@ -29,12 +41,20 @@ switch (cmd) {
 usage:
   iiiterm up                    start the operator pane (TUI worker)
   iiiterm tui                   alias for up
-  iiiterm bridge:claude-code    run the Claude Code transcript watcher
+  iiiterm bridge:claude-code    Claude Code transcript watcher
+  iiiterm bridge:codex          Codex rollout watcher
+  iiiterm bridge:opencode       OpenCode SQLite watcher
+  iiiterm router                cross-agent trigger router (v0.4.0)
+  iiiterm actions               session action worker (v0.5.0)
 
 env:
-  IIITERM_ENGINE_URL    default ws://127.0.0.1:49134
-  IIITERM_STATE_SCOPE   default iiiterm:sessions
-  IIITERM_POLL_MS       default 1000
-  CLAUDE_PROJECTS_DIR   default ~/.claude/projects
+  IIITERM_ENGINE_URL      default ws://127.0.0.1:49134
+  IIITERM_STATE_SCOPE     default iiiterm:sessions
+  IIITERM_POLL_MS         default 1000
+  CLAUDE_PROJECTS_DIR     default ~/.claude/projects
+  CODEX_SESSIONS_DIR      default ~/.codex/sessions
+  OPENCODE_DB_PATH        default ~/.local/share/opencode/opencode.db
+  IIITERM_ROUTER_RULES    default ~/.config/iiiterm/router.json
+  IIITERM_OPENCODE_QUERY  override SQL query for bridge-opencode
 `);
 }
