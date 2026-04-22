@@ -234,9 +234,11 @@ npm run dev:tui           # tui
 - [x] v0.7.1 — safety fixes (persistent router dedup, shutdown hooks, argv escape, etc.)
 - [x] v0.8.0 — `bridge-tmux` pane attachment + vitest suite with A1 regression
 - [x] v0.9.0 — tail-read for huge transcripts + engine::log::error routing
-- [x] v1.0.0 — npm publish + CI/CD pipeline
-- [ ] v1.1.0 — stream partial agent output through iii channels instead of waiting for process exit
-- [ ] v1.2.0 — graduate stable bridges to `iii-hq/workers` as independent packages
+- [x] v0.10.0 — npm publish + CI/CD pipeline
+- [x] v0.11.0 — end-to-end test suite covering every worker pipeline
+- [ ] v0.12.0 — stream partial agent output through iii channels instead of waiting for process exit
+- [ ] v0.13.0 — graduate stable bridges to `iii-hq/workers` as independent packages
+- [ ] v1.0.0 — first stable release once the above settle in real use
 
 ## Design
 
