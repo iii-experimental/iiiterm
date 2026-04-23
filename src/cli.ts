@@ -36,6 +36,18 @@ switch (cmd) {
   case 'bridge:lifecycle':
     run('workers/bridge-lifecycle.js');
     break;
+  case 'spawner':
+    run('workers/spawner.js');
+    break;
+  case 'worktree':
+    run('workers/worktree-manager.js');
+    break;
+  case 'review':
+    run('workers/review.js');
+    break;
+  case 'run':
+    run('cli-run.js');
+    break;
   case 'claude-worker':
     run('workers/claude-worker.js');
     break;
@@ -64,6 +76,10 @@ usage:
   iiiterm bridge:opencode       OpenCode SQLite watcher
   iiiterm router                cross-agent trigger router
   iiiterm actions               session action worker
+  iiiterm spawner               spawn agent CLIs into tmux panes
+  iiiterm worktree              git worktree manager functions
+  iiiterm review                review / merge / discard functions
+  iiiterm run --team <name> --prompt <p>   orchestrate a team of agents
   iiiterm claude-worker         agent::claude::run wrapper
   iiiterm codex-worker          agent::codex::run wrapper
   iiiterm opencode-worker       agent::opencode::run wrapper

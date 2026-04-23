@@ -42,6 +42,9 @@ Every capability is a narrow iii worker you run on its own:
 | `bridge-tmux` | matches tmux panes to sessions by agent CLI + cwd, attaches tmuxTarget + pid |
 | `bridge-lifecycle` | prunes stale sessions from state using per-status thresholds |
 | `bridge-router` | evaluates rules against state changes, fires cross-agent triggers (with optional verify gate) |
+| `spawner` | launches agent CLIs into fresh tmux panes, seeds SessionState |
+| `worktree-manager` | git worktree create / remove / list functions |
+| `review` | diff / merge / discard functions operating on worktrees |
 | `actions` | registers `iiiterm::session::kill / reattach / resend` |
 | `tui` | renders the operator pane in a terminal, handles keybindings |
 | `claude-worker` | `agent::claude::run` — spawns Claude Code headlessly |
@@ -82,9 +85,17 @@ iiiterm bridge:lifecycle &
 # coordination
 iiiterm router &
 iiiterm actions &
+iiiterm spawner &
+iiiterm worktree &
+iiiterm review &
 
 # operator surface
 iiiterm up              # the terminal pane, usually run in a tmux split
+
+# parallel harness (from inside tmux)
+iiiterm run --team review-cycle --prompt "refactor billing"
+# or inline team without a config file:
+iiiterm run --team claude-code,codex --prompt "ship it"
 
 # agent wrappers (only if you want to call agents via iii.trigger)
 iiiterm claude-worker &
@@ -240,9 +251,13 @@ npm run dev:tui           # tui
 - [x] v0.11.0 — end-to-end test suite covering every worker pipeline
 - [x] v0.12.0 — stream partial agent output through iii channels instead of waiting for process exit
 - [x] v0.13.0 — stale-session pruning, codex status event map, router verify gate
-- [ ] v0.14.0 — scan age cutoff, project dir decoding, thread-level granularity, unseen tracker
-- [ ] v0.15.0 — HTTP metadata API, plugin surface, Stop-hook integration
-- [ ] v0.16.0 — graduate stable bridges to `iii-hq/workers` as independent packages
+- [x] v0.14.0 — parallel harness (`iiiterm run --team`), spawner, worktree-manager, review
+- [ ] v0.15.0 — observation polish (age cutoff, dir decoding, threads, unseen tracker)
+- [ ] v0.16.0 — HTTP metadata API, plugin surface, Stop-hook integration
+- [ ] v0.17.0 — structured handoffs (G15) + per-session mutex (G16)
+- [ ] v0.18.0 — agent sprawl (gemini, cursor, copilot, pi, omp, openclaw, hermes)
+- [ ] v0.19.0 — CDP browser workers, MCP server exposing iiiterm tools, cluster dashboard
+- [ ] v0.20.0 — graduate stable bridges to `iii-hq/workers` as independent packages
 - [ ] v1.0.0 — first stable release once the above settle in real use
 
 ## Design

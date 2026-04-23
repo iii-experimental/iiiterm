@@ -1,0 +1,24 @@
+{
+  "name": "review-cycle",
+  "layout": "split-horizontal",
+  "worktree": { "enabled": true },
+  "members": [
+    {
+      "role": "plan",
+      "agent": "claude-code",
+      "prompt": "Plan the implementation for: {{ prompt }}\n\nReturn the full plan before any code."
+    },
+    {
+      "role": "code",
+      "agent": "codex",
+      "depends_on": "plan",
+      "prompt": "Implement the plan for: {{ prompt }}"
+    },
+    {
+      "role": "review",
+      "agent": "opencode",
+      "depends_on": "code",
+      "prompt": "Review the diff for: {{ prompt }}. Report issues and risks only."
+    }
+  ]
+}
