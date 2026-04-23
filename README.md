@@ -40,7 +40,8 @@ Every capability is a narrow iii worker you run on its own:
 | `bridge-codex` | reads `~/.codex/sessions/rollout-*.json`, writes SessionState |
 | `bridge-opencode` | polls opencode SQLite, writes SessionState |
 | `bridge-tmux` | matches tmux panes to sessions by agent CLI + cwd, attaches tmuxTarget + pid |
-| `bridge-router` | evaluates rules against state changes, fires cross-agent triggers |
+| `bridge-lifecycle` | prunes stale sessions from state using per-status thresholds |
+| `bridge-router` | evaluates rules against state changes, fires cross-agent triggers (with optional verify gate) |
 | `actions` | registers `iiiterm::session::kill / reattach / resend` |
 | `tui` | renders the operator pane in a terminal, handles keybindings |
 | `claude-worker` | `agent::claude::run` — spawns Claude Code headlessly |
@@ -76,6 +77,7 @@ iiiterm bridge:claude-code &
 iiiterm bridge:codex &
 iiiterm bridge:opencode &
 iiiterm bridge:tmux &
+iiiterm bridge:lifecycle &
 
 # coordination
 iiiterm router &

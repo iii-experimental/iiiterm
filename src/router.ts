@@ -20,6 +20,7 @@ export interface RouterRule {
   id?: string;
   description?: string;
   when: RouterMatch;
+  verify?: RouterAction;
   then: RouterAction | RouterAction[];
   once?: boolean;
 }

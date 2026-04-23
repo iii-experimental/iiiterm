@@ -1,6 +1,6 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
-import type { SessionState } from '../types.js';
+import type { SessionState, SessionStatus } from '../types.js';
 import type { ErrorReporter } from '../errors.js';
 
 interface CodexItem {
@@ -36,10 +36,32 @@ function extractText(content: CodexItem['content']): string | undefined {
     .trim();
 }
 
-function inferStatus(last: CodexItem | undefined, ageMs: number): SessionState['status'] {
+/**
+ * Codex transcripts carry explicit event types. Map them directly instead of
+ * guessing from role + age. Event names follow the opensessions convention
+ * so third-party rollout shapes stay compatible.
+ */
+export function inferCodexStatus(
+  last: CodexItem | undefined,
+  items: CodexItem[],
+  ageMs: number,
+): SessionStatus {
   if (!last) return 'idle';
+
+  if (last.type === 'turn_aborted') return 'interrupted';
+  if (last.type === 'task_complete' || last.type === 'final_answer') return 'done';
   if (last.type === 'error') return 'error';
-  if (last.role === 'user') return 'waiting';
+
+  if (last.role === 'assistant' && last.type === 'commentary') return 'running';
+
+  if (last.role === 'user' || last.type === 'user_message') return 'waiting';
+  if (last.role === 'tool') return 'running';
+
+  const recentTool = items
+    .slice(-3)
+    .some((i) => i.role === 'tool' || (i.type ?? '').startsWith('tool_'));
+  if (recentTool && ageMs < 5_000) return 'running';
+
   if (ageMs < 5_000) return 'running';
   return 'idle';
 }
@@ -79,7 +101,7 @@ async function parseRollout(
     agent: 'codex',
     title: extractText(firstUser?.content)?.slice(0, 80),
     cwd: parsed.turn_context?.cwd,
-    status: inferStatus(last, ageMs),
+    status: inferCodexStatus(last, items, ageMs),
     lastMessage: extractText(last?.content)?.slice(0, 200),
     lastTurnAt,
     updatedAt: Date.now(),

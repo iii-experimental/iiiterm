@@ -33,6 +33,9 @@ switch (cmd) {
   case 'bridge:tmux':
     run('workers/bridge-tmux.js');
     break;
+  case 'bridge:lifecycle':
+    run('workers/bridge-lifecycle.js');
+    break;
   case 'claude-worker':
     run('workers/claude-worker.js');
     break;

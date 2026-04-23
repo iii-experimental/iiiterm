@@ -32,6 +32,33 @@ function actionToTriggerAction(a: RouterAction) {
   return undefined;
 }
 
+async function runVerify(
+  iii: ISdk,
+  rule: RouterRule,
+  ruleKey: string,
+  session: SessionState,
+): Promise<boolean> {
+  if (!rule.verify) return true;
+  try {
+    const res = (await iii.trigger({
+      function_id: rule.verify.function_id,
+      payload: { ...(rule.verify.payload ?? {}), session },
+    })) as { pass?: boolean; reason?: string } | undefined;
+    if (!res?.pass) {
+      process.stderr.write(
+        `[iiiterm/router] ${ruleKey} verify blocked: ${res?.reason ?? 'pass=false'}\n`,
+      );
+      return false;
+    }
+    return true;
+  } catch (err) {
+    process.stderr.write(
+      `[iiiterm/router] ${ruleKey} verify threw (treating as blocked): ${String(err)}\n`,
+    );
+    return false;
+  }
+}
+
 async function applyRule(
   iii: ISdk,
   rule: RouterRule,
@@ -87,6 +114,8 @@ export async function evaluateRules(
       if (rule.once !== false && fired.has(k)) continue;
       fired.add(k);
       await markFired(iii, k);
+      const ok = await runVerify(iii, rule, ruleKey, s);
+      if (!ok) continue;
       fires += await applyRule(iii, rule, ruleKey, s);
     }
   }
