@@ -16,12 +16,19 @@ export interface RouterAction {
   queue?: string;
 }
 
+export interface RouterMatchCapture {
+  name: string;
+  required?: boolean;
+}
+
 export interface RouterRule {
   id?: string;
   description?: string;
   when: RouterMatch;
+  requires?: RouterMatchCapture[];
   verify?: RouterAction;
   then: RouterAction | RouterAction[];
+  capture?: { as: string };
   once?: boolean;
 }
 

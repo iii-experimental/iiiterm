@@ -10,6 +10,49 @@ import {
 } from '../router.js';
 
 export const FIRED_SCOPE = 'iiiterm:router:fired';
+export const CAPTURE_SCOPE = 'iiiterm:router:results';
+
+const sessionLocks = new Map<string, Promise<void>>();
+
+async function withSessionLock<T>(sessionId: string, fn: () => Promise<T>): Promise<T> {
+  const prev = sessionLocks.get(sessionId) ?? Promise.resolve();
+  let release!: () => void;
+  const next = new Promise<void>((r) => {
+    release = r;
+  });
+  sessionLocks.set(sessionId, prev.then(() => next));
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release();
+    if (sessionLocks.get(sessionId) === prev.then(() => next)) sessionLocks.delete(sessionId);
+  }
+}
+
+export async function loadCapture(
+  iii: ISdk,
+  name: string,
+  sessionId: string,
+): Promise<unknown | undefined> {
+  const res = (await iii.trigger({
+    function_id: 'state::get',
+    payload: { scope: CAPTURE_SCOPE, key: `${name}::${sessionId}` },
+  })) as { value?: unknown };
+  return res?.value;
+}
+
+export async function storeCapture(
+  iii: ISdk,
+  name: string,
+  sessionId: string,
+  value: unknown,
+): Promise<void> {
+  await iii.trigger({
+    function_id: 'state::set',
+    payload: { scope: CAPTURE_SCOPE, key: `${name}::${sessionId}`, value },
+  });
+}
 
 export async function loadFiredSet(iii: ISdk): Promise<Set<string>> {
   const res = (await iii.trigger({
@@ -64,16 +107,20 @@ async function applyRule(
   rule: RouterRule,
   ruleKey: string,
   session: SessionState,
+  captures: Record<string, unknown>,
 ): Promise<number> {
   const thens = Array.isArray(rule.then) ? rule.then : [rule.then];
   let count = 0;
   for (const t of thens) {
     try {
-      await iii.trigger({
+      const result = (await iii.trigger({
         function_id: t.function_id,
-        payload: { ...(t.payload ?? {}), session },
+        payload: { ...(t.payload ?? {}), session, captures },
         action: actionToTriggerAction(t),
-      });
+      })) as unknown;
+      if (rule.capture?.as) {
+        await storeCapture(iii, rule.capture.as, session.id, result);
+      }
       count += 1;
     } catch (err) {
       process.stderr.write(
@@ -112,11 +159,30 @@ export async function evaluateRules(
       if (!matches(s, rule.when)) continue;
       const k = fireKey(ruleKey, s.id, s.status);
       if (rule.once !== false && fired.has(k)) continue;
+
+      const captures: Record<string, unknown> = {};
+      let missing = false;
+      for (const req of rule.requires ?? []) {
+        const v = await loadCapture(iii, req.name, s.id);
+        if (v === undefined || v === null) {
+          if (req.required !== false) {
+            missing = true;
+            break;
+          }
+        } else {
+          captures[req.name] = v;
+        }
+      }
+      if (missing) continue;
+
       fired.add(k);
       await markFired(iii, k);
       const ok = await runVerify(iii, rule, ruleKey, s);
       if (!ok) continue;
-      fires += await applyRule(iii, rule, ruleKey, s);
+
+      fires += await withSessionLock(s.id, () =>
+        applyRule(iii, rule, ruleKey, s, captures),
+      );
     }
   }
   return fires;
