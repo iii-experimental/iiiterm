@@ -29,6 +29,13 @@ const AGENT_BIN: Record<AgentKind, string> = {
   codex: process.env.IIITERM_CODEX_BIN ?? 'codex',
   opencode: process.env.IIITERM_OPENCODE_BIN ?? 'opencode',
   amp: process.env.IIITERM_AMP_BIN ?? 'amp',
+  gemini: process.env.IIITERM_GEMINI_BIN ?? 'gemini',
+  cursor: process.env.IIITERM_CURSOR_BIN ?? 'cursor-agent',
+  copilot: process.env.IIITERM_COPILOT_BIN ?? 'gh',
+  aider: process.env.IIITERM_AIDER_BIN ?? 'aider',
+  qwen: process.env.IIITERM_QWEN_BIN ?? 'qwen',
+  openclaw: process.env.IIITERM_OPENCLAW_BIN ?? 'openclaw',
+  hermes: process.env.IIITERM_HERMES_BIN ?? 'hermes',
 };
 
 function sanitize(text: string): string {

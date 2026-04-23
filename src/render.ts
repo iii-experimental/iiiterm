@@ -16,12 +16,19 @@ const STATUS_STYLE: Record<SessionStatus, { glyph: string; color: string }> = {
   interrupted: { glyph: '⚠', color: `${ESC}35m` },
 };
 
-const AGENT_LABEL = {
+const AGENT_LABEL: Record<string, string> = {
   'claude-code': 'claude',
   codex: 'codex ',
   opencode: 'opencd',
   amp: 'amp   ',
-} as const;
+  gemini: 'gemini',
+  cursor: 'cursor',
+  copilot: 'copilt',
+  aider: 'aider ',
+  qwen: 'qwen  ',
+  openclaw: 'oclaw ',
+  hermes: 'hermes',
+};
 
 function pad(s: string, n: number): string {
   if (s.length >= n) return s.slice(0, n);

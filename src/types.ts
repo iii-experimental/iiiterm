@@ -1,4 +1,15 @@
-export type AgentKind = 'claude-code' | 'codex' | 'opencode' | 'amp';
+export type AgentKind =
+  | 'claude-code'
+  | 'codex'
+  | 'opencode'
+  | 'amp'
+  | 'gemini'
+  | 'cursor'
+  | 'copilot'
+  | 'aider'
+  | 'qwen'
+  | 'openclaw'
+  | 'hermes';
 
 export type SessionStatus =
   | 'idle'
