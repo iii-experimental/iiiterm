@@ -4,6 +4,13 @@ import { expand } from './paths.js';
 
 export const MIN_POLL_MS = 1000;
 
+export function loadScanMaxAgeMs(): number | undefined {
+  const raw = process.env.IIITERM_SCAN_MAX_AGE_MS;
+  if (!raw) return undefined;
+  const v = Number(raw);
+  return Number.isFinite(v) && v > 0 ? v : undefined;
+}
+
 export function loadConfig(): BridgeConfig {
   const rawPoll = Number(process.env.IIITERM_POLL_MS ?? 1000);
   const pollMs = Number.isFinite(rawPoll) && rawPoll >= MIN_POLL_MS ? rawPoll : MIN_POLL_MS;

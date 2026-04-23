@@ -2,6 +2,7 @@ import { readdir, stat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import type { SessionState } from '../types.js';
 import type { ErrorReporter } from '../errors.js';
+import { decodeClaudeProjectSlug } from '../sessions/decode.js';
 import { readWholeOrTail } from './tail.js';
 
 interface ClaudeTranscriptLine {
@@ -17,6 +18,7 @@ interface ClaudeTranscriptLine {
 
 export interface ScanOptions {
   onError?: ErrorReporter;
+  maxAgeMs?: number;
 }
 
 const fileOffsets = new Map<string, number>();
@@ -75,7 +77,7 @@ async function parseTranscript(
   const firstWithSession = parsed.find((p) => p.sessionId);
   const id = firstWithSession?.sessionId ?? basename(filePath, '.jsonl');
 
-  const cwd = parsed.find((p) => p.cwd)?.cwd;
+  const cwd = parsed.find((p) => p.cwd)?.cwd ?? decodeClaudeProjectSlug(projectSlug);
   const tokensIn = tailed
     ? undefined
     : parsed.reduce((n, p) => n + (p.usage?.input_tokens ?? 0), 0);
@@ -101,6 +103,7 @@ async function parseTranscript(
     tokensOut,
     updatedAt: Date.now(),
     branch: projectSlug,
+    threadId: id,
   };
 }
 
@@ -108,7 +111,8 @@ export async function scanClaudeProjects(
   rootDir: string,
   opts: ScanOptions = {},
 ): Promise<SessionState[]> {
-  const { onError } = opts;
+  const { onError, maxAgeMs } = opts;
+  const now = Date.now();
   const out: SessionState[] = [];
   const seen = new Set<string>();
   let projects: string[];
@@ -144,6 +148,8 @@ export async function scanClaudeProjects(
         onError?.(`stat ${full}`, err);
         continue;
       }
+
+      if (maxAgeMs !== undefined && now - mtimeMs > maxAgeMs) continue;
 
       const prev = fileOffsets.get(full);
       if (prev === size) continue;

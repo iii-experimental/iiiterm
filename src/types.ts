@@ -28,6 +28,8 @@ export interface SessionState {
   worktreePath?: string;
   role?: string;
   verifiers?: Record<string, VerifyOutcome>;
+  threadId?: string;
+  threadName?: string;
 }
 
 export interface VerifyOutcome {

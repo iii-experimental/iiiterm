@@ -22,6 +22,7 @@ interface CodexRollout {
 
 export interface ScanOptions {
   onError?: ErrorReporter;
+  maxAgeMs?: number;
 }
 
 const fileOffsets = new Map<string, number>();
@@ -112,7 +113,8 @@ export async function scanCodexSessions(
   rootDir: string,
   opts: ScanOptions = {},
 ): Promise<SessionState[]> {
-  const { onError } = opts;
+  const { onError, maxAgeMs } = opts;
+  const now = Date.now();
   const out: SessionState[] = [];
   const seen = new Set<string>();
   let files: string[];
@@ -138,6 +140,8 @@ export async function scanCodexSessions(
       onError?.(`stat ${full}`, err);
       continue;
     }
+
+    if (maxAgeMs !== undefined && now - mtimeMs > maxAgeMs) continue;
 
     const prev = fileOffsets.get(full);
     if (prev === size) continue;

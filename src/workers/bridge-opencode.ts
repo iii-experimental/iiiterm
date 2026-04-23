@@ -21,7 +21,7 @@ async function main(): Promise<void> {
       const sessions = await scanOpencodeDb(cfg.opencodeDbPath, query, { onError });
       const host = iiitermHost();
       for (const s of sessions) {
-        await writeSession(iii, cfg.stateScope, { ...s, host });
+        await writeSession(iii, cfg.stateScope, { ...s, host }, { computeUnseen: true });
       }
       return { scanned: sessions.length };
     },

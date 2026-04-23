@@ -1,5 +1,5 @@
 import { registerWorker } from 'iii-sdk';
-import { cronEveryPoll, loadConfig } from '../config.js';
+import { cronEveryPoll, loadConfig, loadScanMaxAgeMs } from '../config.js';
 import { sdkReporter } from '../errors.js';
 import { iiitermHost } from '../host.js';
 import { attachSdkShutdown } from '../lifecycle.js';
@@ -17,10 +17,11 @@ async function main(): Promise<void> {
   await iii.registerFunction(
     'iiiterm::bridge::codex::scan',
     async () => {
-      const sessions = await scanCodexSessions(cfg.codexSessionsDir, { onError });
+      const maxAgeMs = loadScanMaxAgeMs();
+      const sessions = await scanCodexSessions(cfg.codexSessionsDir, { onError, maxAgeMs });
       const host = iiitermHost();
       for (const s of sessions) {
-        await writeSession(iii, cfg.stateScope, { ...s, host });
+        await writeSession(iii, cfg.stateScope, { ...s, host }, { computeUnseen: true });
       }
       return { scanned: sessions.length };
     },

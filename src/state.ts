@@ -1,14 +1,21 @@
 import type { ISdk } from 'iii-sdk';
 import type { SessionState } from './types.js';
+import { unseenForTransition } from './sessions/unseen.js';
 
 export async function writeSession(
   iii: ISdk,
   scope: string,
   session: SessionState,
+  opts: { computeUnseen?: boolean } = {},
 ): Promise<void> {
+  let value = session;
+  if (opts.computeUnseen) {
+    const prev = await getSession(iii, scope, session.id);
+    value = { ...session, unseen: unseenForTransition(prev, session) };
+  }
   await iii.trigger({
     function_id: 'state::set',
-    payload: { scope, key: session.id, value: session },
+    payload: { scope, key: session.id, value },
   });
 }
 
