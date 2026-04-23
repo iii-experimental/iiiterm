@@ -1,8 +1,12 @@
 # iiiterm
 
-Operator surface for agent swarms on [iii](https://github.com/iii-hq/iii).
+**The multi-agent orchestrator that won't fire the next step unless the last one really passed.**
 
-iiiterm is a family of narrow iii workers. One for each agent CLI you already use. One each for observation, coordination, and control. Compose what you need, skip what you don't. The engine is the coordination layer; iiiterm is the seats you watch from and the knobs you turn.
+iiiterm runs many AI coding agents side by side in tmux, one pane per role, each in an isolated git worktree. Cross-agent coordination goes through a verify gate: no rule fires until tests / lint / types / build / diff actually pass. "Done" means verified, not claimed.
+
+Built as a family of narrow iii workers. One for each agent CLI you already use. One each for observation, coordination, verification, and control. Compose what you need, skip what you don't. The engine is the coordination layer; iiiterm is the seats you watch from and the knobs you turn.
+
+Works across machines — every session carries its host; point your TUI or browser peer at one engine, see every agent on every box.
 
 [![ci](https://github.com/iii-experimental/iiiterm/actions/workflows/ci.yml/badge.svg)](https://github.com/iii-experimental/iiiterm/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/iiiterm.svg)](https://www.npmjs.com/package/iiiterm)
@@ -42,9 +46,14 @@ Every capability is a narrow iii worker you run on its own:
 | `bridge-tmux` | matches tmux panes to sessions by agent CLI + cwd, attaches tmuxTarget + pid |
 | `bridge-lifecycle` | prunes stale sessions from state using per-status thresholds |
 | `bridge-router` | evaluates rules against state changes, fires cross-agent triggers (with optional verify gate) |
-| `spawner` | launches agent CLIs into fresh tmux panes, seeds SessionState |
+| `spawner` | launches agent CLIs into fresh tmux panes, seeds SessionState with host + role + worktree |
 | `worktree-manager` | git worktree create / remove / list functions |
 | `review` | diff / merge / discard functions operating on worktrees |
+| `verify-tests` | `verify::tests_passed` (IIITERM_TEST_CMD) |
+| `verify-lint` | `verify::lint_clean` (IIITERM_LINT_CMD) |
+| `verify-types` | `verify::types_ok` (IIITERM_TYPES_CMD) |
+| `verify-build` | `verify::build_ok` (IIITERM_BUILD_CMD) |
+| `verify-diff-clean` | `verify::diff_clean` (pure git, no env) |
 | `actions` | registers `iiiterm::session::kill / reattach / resend` |
 | `tui` | renders the operator pane in a terminal, handles keybindings |
 | `claude-worker` | `agent::claude::run` — spawns Claude Code headlessly |
@@ -62,6 +71,7 @@ Requires Node 20+ and a running iii engine on `ws://127.0.0.1:49134` (plus `ws:/
 
 ```sh
 npm i -g iiiterm
+iiiterm setup        # seeds default teams + CLAUDE.md iiiterm block
 ```
 
 Optional, for opencode support:
@@ -169,6 +179,11 @@ IIITERM_CLAUDE_BIN      claude
 IIITERM_CODEX_BIN       codex
 IIITERM_OPENCODE_BIN    opencode
 IIITERM_AMP_BIN         amp
+IIITERM_TEST_CMD        npm test --silent
+IIITERM_LINT_CMD        npm run lint --silent
+IIITERM_TYPES_CMD       npx tsc --noEmit
+IIITERM_BUILD_CMD       npm run build --silent
+IIITERM_HOST            os.hostname()
 ```
 
 ## Layout
@@ -252,12 +267,13 @@ npm run dev:tui           # tui
 - [x] v0.12.0 — stream partial agent output through iii channels instead of waiting for process exit
 - [x] v0.13.0 — stale-session pruning, codex status event map, router verify gate
 - [x] v0.14.0 — parallel harness (`iiiterm run --team`), spawner, worktree-manager, review
-- [ ] v0.15.0 — observation polish (age cutoff, dir decoding, threads, unseen tracker)
-- [ ] v0.16.0 — HTTP metadata API, plugin surface, Stop-hook integration
-- [ ] v0.17.0 — structured handoffs (G15) + per-session mutex (G16)
-- [ ] v0.18.0 — agent sprawl (gemini, cursor, copilot, pi, omp, openclaw, hermes)
-- [ ] v0.19.0 — CDP browser workers, MCP server exposing iiiterm tools, cluster dashboard
-- [ ] v0.20.0 — graduate stable bridges to `iii-hq/workers` as independent packages
+- [x] v0.15.0 — verifier-first (tests/lint/types/build/diff-clean), multi-machine host field, `iiiterm setup`, default teams
+- [ ] v0.16.0 — observation polish (age cutoff, dir decoding, threads, unseen tracker)
+- [ ] v0.17.0 — HTTP metadata API, plugin surface, Stop-hook integration
+- [ ] v0.18.0 — structured handoffs (G15) + per-session mutex (G16)
+- [ ] v0.19.0 — agent sprawl (gemini, cursor, copilot, pi, omp, openclaw, hermes)
+- [ ] v0.20.0 — CDP browser workers, MCP server exposing iiiterm tools, cluster dashboard
+- [ ] v0.21.0 — graduate stable bridges to `iii-hq/workers` as independent packages
 - [ ] v1.0.0 — first stable release once the above settle in real use
 
 ## Design
