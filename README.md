@@ -368,4 +368,4 @@ See `AGENTS.md` for working-on-this-repo conventions.
 
 ## License
 
-MIT
+Apache-2.0. See `LICENSE`.

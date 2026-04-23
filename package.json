@@ -67,7 +67,7 @@
     "operator",
     "tui"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": "Rohit Ghumare",
   "repository": {
     "type": "git",
