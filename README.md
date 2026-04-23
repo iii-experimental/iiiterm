@@ -238,8 +238,11 @@ npm run dev:tui           # tui
 - [x] v0.9.0 — tail-read for huge transcripts + engine::log::error routing
 - [x] v0.10.0 — npm publish + CI/CD pipeline
 - [x] v0.11.0 — end-to-end test suite covering every worker pipeline
-- [ ] v0.12.0 — stream partial agent output through iii channels instead of waiting for process exit
-- [ ] v0.13.0 — graduate stable bridges to `iii-hq/workers` as independent packages
+- [x] v0.12.0 — stream partial agent output through iii channels instead of waiting for process exit
+- [x] v0.13.0 — stale-session pruning, codex status event map, router verify gate
+- [ ] v0.14.0 — scan age cutoff, project dir decoding, thread-level granularity, unseen tracker
+- [ ] v0.15.0 — HTTP metadata API, plugin surface, Stop-hook integration
+- [ ] v0.16.0 — graduate stable bridges to `iii-hq/workers` as independent packages
 - [ ] v1.0.0 — first stable release once the above settle in real use
 
 ## Design
