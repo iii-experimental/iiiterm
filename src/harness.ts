@@ -96,6 +96,7 @@ export async function runTeam(
         role: member.role,
         layout: team.layout ?? 'split-horizontal',
         title: `${member.role}:${member.agent}`,
+        worktreePath: outcome.worktreePath,
       },
     })) as { ok: boolean; id?: string; tmuxTarget?: string; reason?: string };
 

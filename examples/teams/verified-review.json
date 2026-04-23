@@ -1,0 +1,19 @@
+{
+  "name": "verified-review",
+  "layout": "split-horizontal",
+  "worktree": { "enabled": true },
+  "members": [
+    {
+      "role": "code",
+      "agent": "claude-code",
+      "prompt": "Ship: {{ prompt }}. When the tests pass and the diff is clean, finish."
+    },
+    {
+      "role": "review",
+      "agent": "codex",
+      "depends_on": "code",
+      "prompt": "Review the diff produced by the adjacent pane for: {{ prompt }}. Report issues and risks only."
+    }
+  ],
+  "notes": "Pair with a router rule that verifies tests_passed and diff_clean before the review pane fires."
+}

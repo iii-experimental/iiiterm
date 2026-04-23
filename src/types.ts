@@ -24,6 +24,17 @@ export interface SessionState {
   unseen?: boolean;
   tmuxTarget?: string;
   pid?: number;
+  host?: string;
+  worktreePath?: string;
+  role?: string;
+  verifiers?: Record<string, VerifyOutcome>;
+}
+
+export interface VerifyOutcome {
+  pass: boolean;
+  reason?: string;
+  elapsed_ms?: number;
+  ts: number;
 }
 
 export interface BridgeConfig {

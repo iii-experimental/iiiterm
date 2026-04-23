@@ -1,0 +1,27 @@
+{
+  "$schema": "https://github.com/iii-experimental/iiiterm/blob/main/docs/router-schema.json",
+  "rules": [
+    {
+      "id": "code-done-needs-tests-before-review",
+      "description": "When the code role finishes, run tests_passed + diff_clean before waking the reviewer.",
+      "when": { "agent": "claude-code", "status": "done", "titleIncludes": "code:" },
+      "verify": { "function_id": "verify::tests_passed", "payload": {} },
+      "then": {
+        "function_id": "iiiterm::session::resend",
+        "payload": { "prompt": "Please start review on the diff now." }
+      },
+      "once": true
+    },
+    {
+      "id": "block-merge-on-unclean-diff",
+      "description": "Block any merge attempt when the worktree has dirty state.",
+      "when": { "agent": "codex", "status": "done", "titleIncludes": "review:" },
+      "verify": { "function_id": "verify::diff_clean", "payload": {} },
+      "then": {
+        "function_id": "iiiterm::review::merge",
+        "payload": { "strategy": "squash" }
+      },
+      "once": true
+    }
+  ]
+}

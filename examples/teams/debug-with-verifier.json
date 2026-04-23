@@ -1,0 +1,18 @@
+{
+  "name": "debug-with-verifier",
+  "layout": "split-horizontal",
+  "worktree": { "enabled": false },
+  "members": [
+    {
+      "role": "investigate",
+      "agent": "claude-code",
+      "prompt": "Investigate: {{ prompt }}. Find the root cause. Do not fix yet."
+    },
+    {
+      "role": "fix",
+      "agent": "codex",
+      "depends_on": "investigate",
+      "prompt": "Apply the minimal fix for the root cause named in the adjacent pane. When tests pass you are done."
+    }
+  ]
+}

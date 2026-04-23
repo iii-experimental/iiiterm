@@ -1,5 +1,6 @@
 import { registerWorker } from 'iii-sdk';
 import { loadConfig } from '../config.js';
+import { iiitermHost } from '../host.js';
 import { attachSdkShutdown } from '../lifecycle.js';
 import { sendKeys, tmux } from '../tmux.js';
 import { writeSession } from '../state.js';
@@ -13,6 +14,7 @@ interface SpawnInput {
   sessionName?: string;
   layout?: 'split-horizontal' | 'split-vertical' | 'new-window';
   title?: string;
+  worktreePath?: string;
 }
 
 interface SpawnResult {
@@ -92,6 +94,9 @@ async function main(): Promise<void> {
         lastTurnAt: Date.now(),
         updatedAt: Date.now(),
         unseen: false,
+        host: iiitermHost(),
+        role: input.role,
+        worktreePath: input.worktreePath,
       };
       await writeSession(iii, cfg.stateScope, seeded);
       return r;

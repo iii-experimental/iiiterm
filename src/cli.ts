@@ -48,6 +48,24 @@ switch (cmd) {
   case 'run':
     run('cli-run.js');
     break;
+  case 'setup':
+    run('cli-setup.js');
+    break;
+  case 'verify-tests':
+    run('workers/verify-tests.js');
+    break;
+  case 'verify-lint':
+    run('workers/verify-lint.js');
+    break;
+  case 'verify-types':
+    run('workers/verify-types.js');
+    break;
+  case 'verify-build':
+    run('workers/verify-build.js');
+    break;
+  case 'verify-diff-clean':
+    run('workers/verify-diff-clean.js');
+    break;
   case 'claude-worker':
     run('workers/claude-worker.js');
     break;
@@ -79,7 +97,13 @@ usage:
   iiiterm spawner               spawn agent CLIs into tmux panes
   iiiterm worktree              git worktree manager functions
   iiiterm review                review / merge / discard functions
+  iiiterm verify-tests          verify::tests_passed (IIITERM_TEST_CMD)
+  iiiterm verify-lint           verify::lint_clean  (IIITERM_LINT_CMD)
+  iiiterm verify-types          verify::types_ok    (IIITERM_TYPES_CMD)
+  iiiterm verify-build          verify::build_ok    (IIITERM_BUILD_CMD)
+  iiiterm verify-diff-clean     verify::diff_clean  (pure git, no env)
   iiiterm run --team <name> --prompt <p>   orchestrate a team of agents
+  iiiterm setup                 seed default teams into ~/.config/iiiterm
   iiiterm claude-worker         agent::claude::run wrapper
   iiiterm codex-worker          agent::codex::run wrapper
   iiiterm opencode-worker       agent::opencode::run wrapper

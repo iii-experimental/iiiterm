@@ -1,0 +1,18 @@
+{
+  "name": "plan-then-code",
+  "layout": "split-horizontal",
+  "worktree": { "enabled": true },
+  "members": [
+    {
+      "role": "plan",
+      "agent": "claude-code",
+      "prompt": "As the planner, produce a concrete implementation plan for: {{ prompt }}. Do not write code. List every file you would change, in order."
+    },
+    {
+      "role": "code",
+      "agent": "codex",
+      "depends_on": "plan",
+      "prompt": "Implement the plan sitting in the adjacent pane for: {{ prompt }}. Only touch files the planner named."
+    }
+  ]
+}
