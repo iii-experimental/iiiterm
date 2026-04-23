@@ -1,6 +1,6 @@
 {
   "name": "iiiterm",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "description": "Operator surface for agent swarms on iii. Watches Claude Code / Codex / OpenCode / Amp transcripts, pushes state to iii engine, renders to tmux pane and browser peer.",
   "type": "module",
   "main": "dist/cli.js",
