@@ -66,6 +66,15 @@ switch (cmd) {
   case 'verify-diff-clean':
     run('workers/verify-diff-clean.js');
     break;
+  case 'http-api':
+    run('workers/http-api.js');
+    break;
+  case 'plugin-host':
+    run('workers/plugin-host.js');
+    break;
+  case 'stop-hook':
+    run('workers/stop-hook.js');
+    break;
   case 'claude-worker':
     run('workers/claude-worker.js');
     break;
@@ -102,6 +111,9 @@ usage:
   iiiterm verify-types          verify::types_ok    (IIITERM_TYPES_CMD)
   iiiterm verify-build          verify::build_ok    (IIITERM_BUILD_CMD)
   iiiterm verify-diff-clean     verify::diff_clean  (pure git, no env)
+  iiiterm http-api              POST /set-status /set-progress /log /notify
+  iiiterm plugin-host           load user plugins from ~/.config/iiiterm/plugins
+  iiiterm stop-hook             Claude Code / Codex Stop-hook backend
   iiiterm run --team <name> --prompt <p>   orchestrate a team of agents
   iiiterm setup                 seed default teams into ~/.config/iiiterm
   iiiterm claude-worker         agent::claude::run wrapper

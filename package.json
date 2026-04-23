@@ -1,6 +1,6 @@
 {
   "name": "iiiterm",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "Operator surface for agent swarms on iii. Watches Claude Code / Codex / OpenCode / Amp transcripts, pushes state to iii engine, renders to tmux pane and browser peer.",
   "type": "module",
   "main": "dist/cli.js",
@@ -35,6 +35,9 @@
     "dev:verify-types": "tsx src/workers/verify-types.ts",
     "dev:verify-build": "tsx src/workers/verify-build.ts",
     "dev:verify-diff-clean": "tsx src/workers/verify-diff-clean.ts",
+    "dev:http-api": "tsx src/workers/http-api.ts",
+    "dev:plugin-host": "tsx src/workers/plugin-host.ts",
+    "dev:stop-hook": "tsx src/workers/stop-hook.ts",
     "dev:claude-worker": "tsx src/workers/claude-worker.ts",
     "dev:codex-worker": "tsx src/workers/codex-worker.ts",
     "dev:opencode-worker": "tsx src/workers/opencode-worker.ts",
